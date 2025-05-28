@@ -23,28 +23,46 @@ app.get("/", (req, res) => {
 })
 
 // endpoint to get all thoughts
+// query params: ?page=1, ?limit=20, ?sort=hearts, ?tag=travel
 app.get("/thoughts", (req, res) => {
   const page = req.query.page || 1
   const limit = req.query.limit || 10
   const tag = req.query.tag
   const sort = req.query.sort
+  let thoughts = data
   // filter thoughts
   // filter on: tags, 
-  let filteredThoughts = data
   if (tag) {
-    filteredThoughts = filteredThoughts.filter(thought =>
+    thoughts = thoughts.filter(thought =>
       thought.tags.some(word => word.toLowerCase() === tag.toLowerCase())
     )
   }
   // sort thoughts 
   // sort on: createdAt, hearts,  
+  // continue here
 
   // paginate results
-  const paginatedThoughts = filteredThoughts.slice((page - 1) * limit, page * limit)
-  res.json(paginatedThoughts)
+  thoughts = thoughts.slice((page - 1) * limit, page * limit)
+  res.json(thoughts)
 })
 
-// endpoint to get one thought
+// endpoint to get most liked messages
+app.get("/thoughts/popular", (req, res) => {
+  const page = req.query.page || 1
+  const limit = req.query.limit || 10
+  // sort on most hearts
+  let popularThoughts = data.sort((a, b) => b.hearts - a.hearts)
+  // paginate results
+  popularThoughts = popularThoughts.slice((page - 1) * limit, page * limit)
+  res.json(popularThoughts)
+})
+
+// endpoint to get most recent messages
+app.get("/thoughts/recent", (req, res) => {
+  // continue here
+})
+
+// endpoint to get one thought by id
 app.get("/thoughts/:id", (req, res) => {
   const thought = data.filter(thought => thought._id === req.params.id)
   // if id doesn't exist - return not found
@@ -62,18 +80,14 @@ app.listen(port, () => {
 
 // endpoint ideas:
 
-// GET /messages
-// Returns all messages (optionally paginated).
-// Query params: ?page=1&limit=20, ?sort=hearts, ?tag=travel
-
 // GET /messages/recent
 // shortcut for newest messages (e.g., limit=10 and sorted by createdAt)
 
 // GET /messages/popular
-// Returns messages sorted by most hearts or engagement.
+// Returns messages sorted by most hearts
 
 // GET /messages/search
-// Query param: ?q=coffee – search messages by keyword (basic or fuzzy).
+// Query param: ?q=coffee - search messages by keyword
 
 // tags
 // GET /tags - Returns the list of available tags/categories
