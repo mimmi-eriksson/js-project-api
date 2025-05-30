@@ -31,14 +31,18 @@ app.get("/thoughts", (req, res) => {
   const sort = req.query.sort
   let thoughts = data
   // filter thoughts
-  // filter on: tags, 
+  // filter on tag 
   if (tag) {
     thoughts = thoughts.filter(thought =>
       thought.tags.some(word => word.toLowerCase() === tag.toLowerCase())
     )
   }
   // sort thoughts 
-  // sort on: createdAt, hearts,  
+  // sort on hearts
+  if (sort) {
+    thoughts = thoughts.sort((a, b) => b.hearts - a.hearts)
+  }
+  // sort on createdAt
   // continue here
 
   // paginate results
