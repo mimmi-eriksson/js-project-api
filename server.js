@@ -39,12 +39,13 @@ app.get("/thoughts", (req, res) => {
   }
   // sort thoughts 
   // sort on hearts
-  if (sort) {
+  if (sort === "likes") {
     thoughts = thoughts.sort((a, b) => b.hearts - a.hearts)
   }
   // sort on createdAt
-  // continue here
-
+  if (sort === "time") {
+    thoughts = thoughts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  }
   // paginate results
   thoughts = thoughts.slice((page - 1) * limit, page * limit)
   res.json(thoughts)
@@ -63,7 +64,13 @@ app.get("/thoughts/popular", (req, res) => {
 
 // endpoint to get most recent messages
 app.get("/thoughts/recent", (req, res) => {
-  // continue here
+  const page = req.query.page || 1
+  const limit = req.query.limit || 10
+  // sort on most hearts
+  let recentThoughts = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  // paginate results
+  recentThoughts = recentThoughts.slice((page - 1) * limit, page * limit)
+  res.json(recentThoughts)
 })
 
 // endpoint to get one thought by id
