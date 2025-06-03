@@ -1,13 +1,56 @@
 import cors from "cors"
 import express from "express"
 import listEndpoints from "express-list-endpoints"
+import mongoose from "mongoose"
+
 import data from "./data.json"
+
+// setting up database connection
+const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/thoughts"
+mongoose.connect(mongoUrl)
 
 // Defines the port the app will run on. Defaults to 8080, but can be overridden
 // when starting the server. Example command to overwrite PORT env variable value:
 // PORT=9000 npm start
 const port = process.env.PORT || 8080
 const app = express()
+
+// creating a schema and model for messages in database
+const thoughtSchema = new mongoose.Schema({
+  message: {
+    type: String,
+    required: true,
+    minLength: 5,
+    maxLength: 140
+  },
+  hearts: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  tags: {
+    type: [String],
+    required: true,
+    enum: ["travel", "food", "family", "friends", "humor", "nature", "wellness", "home", "entertainment", "work", "other"],
+    default: "other"
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now()
+  }
+})
+const Thought = mongoose.model("Thought", thoughtSchema)
+
+// seeding data to database
+if (process.env.RESET_DATABASE) {
+  const seedDatabase = async () => {
+    await Thought.deleteMany({})
+    data.forEach(thought => {
+      new Thought(thought).save()
+    })
+  }
+  seedDatabase()
+}
 
 // Add middlewares to enable cors and json body parsing
 app.use(cors())
