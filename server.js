@@ -66,47 +66,79 @@ app.get("/", (req, res) => {
 })
 
 // endpoint to get all thoughts
-// query params: ?page=1, ?limit=20, ?sort=hearts, ?tag=travel
-app.get("/thoughts", (req, res) => {
+app.get("/thoughts", async (req, res) => {
   const page = req.query.page || 1
   const limit = req.query.limit || 10
   const tag = req.query.tag
-  const sort = req.query.sort
-  let thoughts = data
-  // filter thoughts
-  // filter on tag 
+  const sort = req.query.sort || "time" // sort on most recent by default
+
+  const query = {}
+  const sortOptions = {}
+
   if (tag) {
-    thoughts = thoughts.filter(thought =>
-      thought.tags.some(word => word.toLowerCase() === tag.toLowerCase())
-    )
+    query.tags = tag
   }
-  // sort thoughts 
-  // sort on hearts
+
   if (sort === "likes") {
-    thoughts = thoughts.sort((a, b) => b.hearts - a.hearts)
+    sortOptions.hearts = -1
   }
-  // sort on createdAt
+
   if (sort === "time") {
-    thoughts = thoughts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    sortOptions.createdAt = -1
   }
-  // paginate results
-  thoughts = thoughts.slice((page - 1) * limit, page * limit)
-  res.json(thoughts)
+
+  try {
+    const filteredThoughts = await Thought.find(query).sort(sortOptions).skip((page - 1) * limit).limit(limit)
+
+    if (filteredThoughts.length === 0) {
+      res.status(404).json({
+        success: false,
+        response: [],
+        message: "No thoughts found on that query. Try another one."
+      })
+    }
+    res.status(200).json({
+      success: true,
+      response: filteredThoughts,
+    })
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      response: error,
+      message: "Failed to fetch thoughts."
+    })
+  }
 })
 
 // endpoint to get most liked messages
-app.get("/thoughts/popular", (req, res) => {
+app.get("/thoughts/popular", async (req, res) => {
   const page = req.query.page || 1
   const limit = req.query.limit || 10
-  // sort on most hearts
-  let popularThoughts = data.sort((a, b) => b.hearts - a.hearts)
-  // paginate results
-  popularThoughts = popularThoughts.slice((page - 1) * limit, page * limit)
-  res.json(popularThoughts)
+  try {
+    const popularThoughts = await Thought.find().sort({ hearts: -1 }).skip((page - 1) * limit).limit(limit)
+
+    if (popularThoughts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        response: [],
+        message: "No thoughts found."
+      })
+    }
+    res.status(200).json({
+      success: true,
+      response: popularThoughts,
+    })
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      response: error,
+      message: "Failed to fetch popular thoughts."
+    })
+  }
 })
 
 // endpoint to get most recent messages
-app.get("/thoughts/recent", (req, res) => {
+app.get("/thoughts/recent", async (req, res) => {
   const page = req.query.page || 1
   const limit = req.query.limit || 10
   // sort on most hearts
