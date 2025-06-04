@@ -3,7 +3,7 @@ import express from "express"
 import listEndpoints from "express-list-endpoints"
 import mongoose from "mongoose"
 
-import data from "./data.json"
+// import data from "./data.json"
 
 // setting up database connection
 const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/thoughts"
@@ -42,15 +42,15 @@ const thoughtSchema = new mongoose.Schema({
 const Thought = mongoose.model("Thought", thoughtSchema)
 
 // seeding data to database
-if (process.env.RESET_DATABASE) {
-  const seedDatabase = async () => {
-    await Thought.deleteMany({})
-    data.forEach(thought => {
-      new Thought(thought).save()
-    })
-  }
-  seedDatabase()
-}
+// if (process.env.RESET_DATABASE) {
+//   const seedDatabase = async () => {
+//     await Thought.deleteMany({})
+//     data.forEach(thought => {
+//       new Thought(thought).save()
+//     })
+//   }
+//   seedDatabase()
+// }
 
 // Add middlewares to enable cors and json body parsing
 app.use(cors())
@@ -74,15 +74,12 @@ app.get("/thoughts", async (req, res) => {
 
   const query = {}
   const sortOptions = {}
-
   if (tag) {
     query.tags = tag
   }
-
   if (sort === "likes") {
     sortOptions.hearts = -1
   }
-
   if (sort === "time") {
     sortOptions.createdAt = -1
   }
@@ -91,7 +88,7 @@ app.get("/thoughts", async (req, res) => {
     const filteredThoughts = await Thought.find(query).sort(sortOptions).skip((page - 1) * limit).limit(limit)
 
     if (filteredThoughts.length === 0) {
-      res.status(404).json({
+      return res.status(404).json({
         success: false,
         response: [],
         message: "No thoughts found on that query. Try another one."
@@ -114,14 +111,21 @@ app.get("/thoughts", async (req, res) => {
 app.get("/thoughts/popular", async (req, res) => {
   const page = req.query.page || 1
   const limit = req.query.limit || 10
+  const tag = req.query.tag
+
+  const query = {}
+  if (tag) {
+    query.tags = tag
+  }
+
   try {
-    const popularThoughts = await Thought.find().sort({ hearts: -1 }).skip((page - 1) * limit).limit(limit)
+    const popularThoughts = await Thought.find(query).sort({ hearts: -1 }).skip((page - 1) * limit).limit(limit)
 
     if (popularThoughts.length === 0) {
       return res.status(404).json({
         success: false,
         response: [],
-        message: "No thoughts found."
+        message: "No thoughts found on that query. Try another one."
       })
     }
     res.status(200).json({
@@ -129,7 +133,7 @@ app.get("/thoughts/popular", async (req, res) => {
       response: popularThoughts,
     })
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       response: error,
       message: "Failed to fetch popular thoughts."
@@ -141,21 +145,69 @@ app.get("/thoughts/popular", async (req, res) => {
 app.get("/thoughts/recent", async (req, res) => {
   const page = req.query.page || 1
   const limit = req.query.limit || 10
-  // sort on most hearts
-  let recentThoughts = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  // paginate results
-  recentThoughts = recentThoughts.slice((page - 1) * limit, page * limit)
-  res.json(recentThoughts)
+  const tag = req.query.tag
+
+  const query = {}
+  if (tag) {
+    query.tags = tag
+  }
+
+  try {
+    const recentThoughts = await Thought.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit)
+
+    if (recentThoughts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        response: [],
+        message: "No thoughts found on that query. Try another one."
+      })
+    }
+    res.status(200).json({
+      success: true,
+      response: recentThoughts,
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to fetch recent thoughts."
+    })
+  }
 })
 
 // endpoint to get one thought by id
-app.get("/thoughts/:id", (req, res) => {
-  const thought = data.filter(thought => thought._id === req.params.id)
-  // if id doesn't exist - return not found
-  if (!thought || thought.length === 0) {
-    return res.status(404).json({ error: "Thought not found!" })
+app.get("/thoughts/:id", async (req, res) => {
+  const { id } = req.params
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        sucess: false,
+        response: null,
+        message: "Invalid ID format."
+      })
+    }
+
+    const thought = await Thought.findById(id)
+    if (!thought) {
+      return res.status(404).json({
+        success: false,
+        response: null,
+        message: "Thought not found!"
+      })
+    }
+
+    res.status(200).json({
+      success: true,
+      response: thought
+    })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to fetch thought."
+    })
   }
-  res.json(thought)
 })
 
 // Start the server
