@@ -321,7 +321,7 @@ app.patch("/thoughts/:id", async (req, res) => {
 })
 
 // endpoint to like a thought
-app.post("/thoughts/:id/like", async (req, res) => {
+app.patch("/thoughts/:id/like", async (req, res) => {
   const { id } = req.params
 
   try {
