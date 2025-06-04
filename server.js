@@ -66,26 +66,24 @@ app.get("/", (req, res) => {
 })
 
 // endpoint to get all thoughts
+// ADD search functionality
 app.get("/thoughts", async (req, res) => {
   const page = req.query.page || 1
   const limit = req.query.limit || 10
+  const sortBy = req.query.sort_by || "-createdAt" // sort on most recent by default
   const tag = req.query.tag
-  const sort = req.query.sort || "time" // sort on most recent by default
+  const likes = req.query.likes
 
   const query = {}
-  const sortOptions = {}
   if (tag) {
     query.tags = tag
   }
-  if (sort === "likes") {
-    sortOptions.hearts = -1
-  }
-  if (sort === "time") {
-    sortOptions.createdAt = -1
+  if (likes) {
+    query.hearts = { $gte: likes }
   }
 
   try {
-    const filteredThoughts = await Thought.find(query).sort(sortOptions).skip((page - 1) * limit).limit(limit)
+    const filteredThoughts = await Thought.find(query).sort(sortBy).skip((page - 1) * limit).limit(limit)
 
     if (filteredThoughts.length === 0) {
       return res.status(404).json({
@@ -99,7 +97,7 @@ app.get("/thoughts", async (req, res) => {
       response: filteredThoughts,
     })
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       response: error,
       message: "Failed to fetch thoughts."
@@ -119,7 +117,7 @@ app.get("/thoughts/popular", async (req, res) => {
   }
 
   try {
-    const popularThoughts = await Thought.find(query).sort({ hearts: -1 }).skip((page - 1) * limit).limit(limit)
+    const popularThoughts = await Thought.find(query).sort("-hearts").skip((page - 1) * limit).limit(limit)
 
     if (popularThoughts.length === 0) {
       return res.status(404).json({
@@ -153,7 +151,7 @@ app.get("/thoughts/recent", async (req, res) => {
   }
 
   try {
-    const recentThoughts = await Thought.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit)
+    const recentThoughts = await Thought.find(query).sort("-createdAt").skip((page - 1) * limit).limit(limit)
 
     if (recentThoughts.length === 0) {
       return res.status(404).json({
@@ -196,7 +194,6 @@ app.get("/thoughts/:id", async (req, res) => {
         message: "Thought not found!"
       })
     }
-
     res.status(200).json({
       success: true,
       response: thought
@@ -210,6 +207,153 @@ app.get("/thoughts/:id", async (req, res) => {
   }
 })
 
+// endpoint to add a thought
+app.post("/thoughts", async (req, res) => {
+  const { message, tags } = req.body
+
+  try {
+    // validate input
+    if (!message || message.length < 5 || message.length > 140) {
+      return res.status(400).json({
+        success: false,
+        response: null,
+        message: "Message must be between 5 and 140 characters."
+      })
+    }
+
+    const newThought = await new Thought({ message, tags }).save()
+    if (!newThought) {
+      return res.status(400).json({
+        success: false,
+        response: null,
+        message: "Failed to post thought."
+      })
+    }
+    res.status(201).json({
+      success: true,
+      response: newThought,
+      message: "Thought successfully posted!"
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to create thought."
+    })
+  }
+})
+
+// endpoint to delete a thought
+app.delete("/thoughts/:id", async (req, res) => {
+  const { id } = req.params
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        sucess: false,
+        response: null,
+        message: "Invalid ID format."
+      })
+    }
+    const thought = await Thought.findByIdAndDelete(id)
+    if (!thought) {
+      return res.status(404).json({
+        success: false,
+        response: null,
+        message: "Thought not found!"
+      })
+    }
+    res.status(200).json({
+      success: true,
+      response: thought,
+      message: "Thought successfully deleted!"
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to delete thought."
+    })
+  }
+})
+
+// endpoint to edit a thought
+app.patch("/thoughts/:id", async (req, res) => {
+  const { id } = req.params
+  const { message } = req.body
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        sucess: false,
+        response: null,
+        message: "Invalid ID format."
+      })
+    }
+    if (message.length < 5 || message.length > 140) {
+      return res.status(400).json({
+        success: false,
+        response: null,
+        message: "Message must be between 5 and 140 characters."
+      })
+    }
+
+    const thought = await Thought.findByIdAndUpdate(id, { message }, { new: true, runValidators: true })
+    if (!thought) {
+      return res.status(404).json({
+        success: false,
+        response: null,
+        message: "Thought not found!"
+      })
+    }
+    res.status(200).json({
+      success: true,
+      response: thought,
+      message: "Thought successfully edited!"
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to edit thought."
+    })
+  }
+})
+
+// endpoint to like a thought
+app.post("/thoughts/:id/like", async (req, res) => {
+  const { id } = req.params
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        sucess: false,
+        response: null,
+        message: "Invalid ID format."
+      })
+    }
+    const thought = await Thought.findByIdAndUpdate(id, { $inc: { hearts: 1 } }, { new: true, runValidators: true })
+    if (!thought) {
+      return res.status(404).json({
+        success: false,
+        response: null,
+        message: "Thought not found!"
+      })
+    }
+    res.status(200).json({
+      success: true,
+      response: thought,
+      message: "Thought successfully liked!"
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to like thought."
+    })
+  }
+})
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`)
@@ -218,26 +362,9 @@ app.listen(port, () => {
 
 // endpoint ideas:
 
-// GET /messages/recent
-// shortcut for newest messages (e.g., limit=10 and sorted by createdAt)
-
-// GET /messages/popular
-// Returns messages sorted by most hearts
-
 // GET /messages/search
 // Query param: ?q=coffee - search messages by keyword
 
 // tags
 // GET /tags - Returns the list of available tags/categories
 
-
-
-// POST /messages
-// Creates a new message.
-// Body: { message: "string", tags: ["tag1", "tag2"] }
-
-// DELETE /messages/:id
-// Deletes a specific message.
-
-// PATCH /messages/:id
-// Allows editing a message (like fixing a typo).
