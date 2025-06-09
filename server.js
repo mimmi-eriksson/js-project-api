@@ -31,12 +31,13 @@ const thoughtSchema = new mongoose.Schema({
   tags: {
     type: [String],
     required: true,
+    lowercase: true,
     enum: ["travel", "food", "family", "friends", "humor", "nature", "wellness", "home", "entertainment", "work", "other"],
     default: "other"
   },
   createdAt: {
     type: Date,
-    default: Date.now()
+    default: Date.now
   }
 })
 const Thought = mongoose.model("Thought", thoughtSchema)
