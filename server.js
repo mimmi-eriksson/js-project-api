@@ -84,9 +84,10 @@ app.get("/thoughts", async (req, res) => {
   }
 
   try {
-    const filteredThoughts = await Thought.find(query).sort(sortBy).skip((page - 1) * limit).limit(limit)
+    const totalCount = await Thought.find(query).countDocuments()
+    const thoughts = await Thought.find(query).sort(sortBy).skip((page - 1) * limit).limit(limit)
 
-    if (filteredThoughts.length === 0) {
+    if (thoughts.length === 0) {
       return res.status(404).json({
         success: false,
         response: [],
@@ -95,7 +96,12 @@ app.get("/thoughts", async (req, res) => {
     }
     res.status(200).json({
       success: true,
-      response: filteredThoughts,
+      response: {
+        data: thoughts,
+        totalCount: totalCount,
+        currentPage: page,
+        limit: limit,
+      }
     })
   } catch (error) {
     res.status(500).json({
@@ -118,6 +124,7 @@ app.get("/thoughts/popular", async (req, res) => {
   }
 
   try {
+    const totalCount = await Thought.find(query).countDocuments()
     const popularThoughts = await Thought.find(query).sort("-hearts").skip((page - 1) * limit).limit(limit)
 
     if (popularThoughts.length === 0) {
@@ -129,7 +136,12 @@ app.get("/thoughts/popular", async (req, res) => {
     }
     res.status(200).json({
       success: true,
-      response: popularThoughts,
+      response: {
+        data: popularThoughts,
+        totalCount: totalCount,
+        currentPage: page,
+        limit: limit,
+      }
     })
   } catch (error) {
     res.status(500).json({
@@ -152,6 +164,7 @@ app.get("/thoughts/recent", async (req, res) => {
   }
 
   try {
+    const totalCount = await Thought.find(query).countDocuments()
     const recentThoughts = await Thought.find(query).sort("-createdAt").skip((page - 1) * limit).limit(limit)
 
     if (recentThoughts.length === 0) {
@@ -163,7 +176,12 @@ app.get("/thoughts/recent", async (req, res) => {
     }
     res.status(200).json({
       success: true,
-      response: recentThoughts,
+      response: {
+        data: recentThoughts,
+        totalCount: totalCount,
+        currentPage: page,
+        limit: limit,
+      }
     })
   } catch (error) {
     res.status(500).json({
