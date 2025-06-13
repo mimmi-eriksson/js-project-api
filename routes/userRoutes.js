@@ -12,7 +12,7 @@ router.post("/", async (req, res) => {
     if (!userName || !password) {
       return res.status(400).json({
         success: false,
-        message: "Username and password are required",
+        message: "User name and password are required",
       })
     }
     // validate if userName already exists
@@ -20,7 +20,7 @@ router.post("/", async (req, res) => {
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: "Username already exists",
+        message: "User name already exists",
       })
     }
     // create a new user
@@ -40,7 +40,7 @@ router.post("/", async (req, res) => {
     res.status(400).json({
       success: false,
       message: "Failed to create user",
-      response: error.errors
+      error
     })
   }
 })
