@@ -9,7 +9,8 @@ import thoughtRoutes from "./routes/thoughtRoutes.js"
 // import data from "./data.json"
 
 // setting up database connection
-const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/thoughts"
+// const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/thoughts"
+const mongoUrl = "mongodb://localhost/thoughts"
 mongoose.connect(mongoUrl)
 
 // Defines the port the app will run on. Defaults to 8080, but can be overridden

@@ -1,4 +1,5 @@
-import express from "express";
+import express from "express"
+import mongoose from "mongoose"
 import { Thought } from "../models/Thought.js"
 import { authenticateUser } from "../middleware/authMiddleware.js"
 
@@ -202,11 +203,12 @@ router.post("/", authenticateUser, async (req, res) => {
 // delete a thought
 router.delete("/:id", authenticateUser, async (req, res) => {
   const { id } = req.params
+  const userId = req.user._id
 
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
-        sucess: false,
+        success: false,
         response: null,
         message: "Invalid ID format."
       })
@@ -225,9 +227,9 @@ router.delete("/:id", authenticateUser, async (req, res) => {
       message: "Thought successfully deleted!"
     })
   } catch (error) {
+    console.error("Error in DELETE /thoughts/:id route:", error)
     res.status(500).json({
       success: false,
-      response: error,
       message: "Failed to delete thought."
     })
   }

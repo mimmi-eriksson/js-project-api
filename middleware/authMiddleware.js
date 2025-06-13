@@ -2,7 +2,8 @@ import { User } from "../models/User.js"
 
 export const authenticateUser = async (req, res, next) => {
   try {
-    const user = await User.findOne({ accessToken: req.header("Authorization") })
+    const accessToken = req.header("Authorization")
+    const user = await User.findOne({ accessToken: accessToken })
     if (user) {
       req.user = user
       next()
@@ -15,7 +16,7 @@ export const authenticateUser = async (req, res, next) => {
   } catch (error) {
     res.status(500).json({
       message: "Internal server error",
-      error: err.message
+      error: error.message
     });
   }
 }
