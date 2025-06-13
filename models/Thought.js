@@ -19,6 +19,10 @@ const thoughtSchema = new mongoose.Schema({
     enum: ["travel", "food", "family", "friends", "humor", "nature", "wellness", "home", "entertainment", "work", "other"],
     default: "other"
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -2,6 +2,7 @@ import express from "express"
 import mongoose from "mongoose"
 import { Thought } from "../models/Thought.js"
 import { authenticateUser } from "../middleware/authMiddleware.js"
+import { User } from "../models/User.js"
 
 const router = express.Router()
 
@@ -130,6 +131,42 @@ router.get("/recent", async (req, res) => {
   }
 })
 
+// post a thought
+router.post("/", authenticateUser, async (req, res) => {
+  const { user, message, tags } = req.body
+
+  try {
+    // validate input
+    if (!message || message.length < 5 || message.length > 140) {
+      return res.status(400).json({
+        success: false,
+        response: null,
+        message: "Message must be between 5 and 140 characters."
+      })
+    }
+
+    const newThought = await new Thought({ user, message, tags }).save()
+    if (!newThought) {
+      return res.status(400).json({
+        success: false,
+        response: null,
+        message: "Failed to post thought."
+      })
+    }
+    res.status(201).json({
+      success: true,
+      response: newThought,
+      message: "Thought successfully posted!"
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to create thought."
+    })
+  }
+})
+
 // get one thought by id
 router.get("/:id", async (req, res) => {
   const { id } = req.params
@@ -164,46 +201,10 @@ router.get("/:id", async (req, res) => {
   }
 })
 
-// post a thought
-router.post("/", authenticateUser, async (req, res) => {
-  const { message, tags } = req.body
-
-  try {
-    // validate input
-    if (!message || message.length < 5 || message.length > 140) {
-      return res.status(400).json({
-        success: false,
-        response: null,
-        message: "Message must be between 5 and 140 characters."
-      })
-    }
-
-    const newThought = await new Thought({ message, tags }).save()
-    if (!newThought) {
-      return res.status(400).json({
-        success: false,
-        response: null,
-        message: "Failed to post thought."
-      })
-    }
-    res.status(201).json({
-      success: true,
-      response: newThought,
-      message: "Thought successfully posted!"
-    })
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      response: error,
-      message: "Failed to create thought."
-    })
-  }
-})
-
 // delete a thought
 router.delete("/:id", authenticateUser, async (req, res) => {
   const { id } = req.params
-  const userId = req.user._id
+  const user = req.user._id
 
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -213,12 +214,12 @@ router.delete("/:id", authenticateUser, async (req, res) => {
         message: "Invalid ID format."
       })
     }
-    const thought = await Thought.findByIdAndDelete(id)
+    const thought = await Thought.findByIdAndDelete({ id, user })
     if (!thought) {
       return res.status(404).json({
         success: false,
         response: null,
-        message: "Thought not found!"
+        message: "Thought not found or you don't have permission to delete it"
       })
     }
     res.status(200).json({
@@ -239,6 +240,7 @@ router.delete("/:id", authenticateUser, async (req, res) => {
 router.patch("/:id", authenticateUser, async (req, res) => {
   const { id } = req.params
   const { message } = req.body
+  const user = req.user._id
 
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -256,12 +258,20 @@ router.patch("/:id", authenticateUser, async (req, res) => {
       })
     }
 
-    const thought = await Thought.findByIdAndUpdate(id, { message }, { new: true, runValidators: true })
+    const thought = await Thought.findByIdAndUpdate(id, User, { message }, { new: true, runValidators: true })
     if (!thought) {
       return res.status(404).json({
         success: false,
         response: null,
         message: "Thought not found!"
+      })
+    }
+    // only allow users to edit their own thoughts
+    if (!thought.user === userId) {
+      return res.status(403).json({
+        success: false,
+        response: null,
+        message: "User do not have the permission to edit this thought."
       })
     }
     res.status(200).json({
