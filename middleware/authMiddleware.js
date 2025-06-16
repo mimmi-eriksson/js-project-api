@@ -20,3 +20,26 @@ export const authenticateUser = async (req, res, next) => {
     });
   }
 }
+
+export const authenticateUserOptional = async (req, res, next) => {
+  try {
+    const accessToken = req.header("Authorization")
+    if (accessToken) {
+      const user = await User.findOne({ accessToken: accessToken })
+      if (user) {
+        req.user = user
+      } else {
+        return res.status(401).json({
+          message: "Authentication missing or invalid.",
+          loggedOut: true
+        })
+      }
+    }
+    next()
+  } catch (error) {
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message
+    })
+  }
+}

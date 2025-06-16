@@ -1,7 +1,8 @@
 import express from "express"
 import mongoose from "mongoose"
+import { authenticateUser, authenticateUserOptional } from "../middleware/authMiddleware.js"
+import { Like } from "../models/Like.js"
 import { Thought } from "../models/Thought.js"
-import { authenticateUser } from "../middleware/authMiddleware.js"
 import { User } from "../models/User.js"
 
 const router = express.Router()
@@ -132,8 +133,8 @@ router.get("/recent", async (req, res) => {
 })
 
 // get all thoughts by a specific user
-router.get("/user/:userId", authenticateUser, async (req, res) => {
-  const { userId } = req.params
+router.get("/user", authenticateUser, async (req, res) => {
+  const userId = req.user._id.toString()
   const page = req.query.page || 1
   const limit = req.query.limit || 10
 
@@ -170,6 +171,61 @@ router.get("/user/:userId", authenticateUser, async (req, res) => {
       success: false,
       response: error,
       message: "Failed to fetch user's thoughts."
+    })
+  }
+})
+
+// get all thoughts liked by a specific user
+router.get("/user/liked", authenticateUser, async (req, res) => {
+  const user = req.user
+  const page = req.query.page || 1
+  const limit = req.query.limit || 10
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(user._id)) {
+      return res.status(400).json({
+        success: false,
+        response: null,
+        message: "Invalid user ID format."
+      })
+    }
+
+    const userLikes = await Like.find({ user: user })
+    if (!userLikes || userLikes.length === 0) {
+      return res.status(404).json({
+        success: false,
+        response: [],
+        message: "No liked thoughts found for this user."
+      })
+    }
+
+    const likedThoughts = await Thought.find({ _id: { $in: userLikes.map(like => like.thought) } })
+      .sort("-createdAt").skip((page - 1) * limit).limit(limit)
+
+    if (likedThoughts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        response: [],
+        message: "No liked thoughts found for this user."
+      })
+    }
+
+    res.status(200).json({
+      success: true,
+      response: {
+        data: likedThoughts,
+        totalCount: likedThoughts.length,
+        currentPage: page,
+        limit: limit,
+      },
+      message: "Successfully fetched liked thoughts."
+    })
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to fetch liked thoughts."
     })
   }
 })
@@ -332,7 +388,7 @@ router.patch("/:id", authenticateUser, async (req, res) => {
 })
 
 // like a thought
-router.patch("/:id/like", async (req, res) => {
+router.patch("/:id/like", authenticateUserOptional, async (req, res) => {
   const { id } = req.params
 
   try {
@@ -351,6 +407,21 @@ router.patch("/:id/like", async (req, res) => {
         message: "Thought not found!"
       })
     }
+
+    // if user is authenticated, create a like entry
+    if (req.user) {
+      const existingLike = await Like.findOne({ user: req.user._id, thought: id })
+      if (!existingLike) {
+        await new Like({ user: req.user._id, thought: id }).save()
+      } else {
+        return res.status(400).json({
+          success: false,
+          response: null,
+          message: "You have already liked this thought."
+        })
+      }
+    }
+
     res.status(200).json({
       success: true,
       response: thought,
