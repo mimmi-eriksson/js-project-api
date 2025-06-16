@@ -46,7 +46,7 @@ router.get("/", async (req, res) => {
     res.status(500).json({
       success: false,
       response: error,
-      message: "Failed to fetch thoughts."
+      message: "Server error while fetching thoughts."
     })
   }
 })
