@@ -204,7 +204,7 @@ router.get("/:id", async (req, res) => {
 // delete a thought
 router.delete("/:id", authenticateUser, async (req, res) => {
   const { id } = req.params
-  const user = req.user._id
+  const userId = req.user._id.toString()
 
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -214,7 +214,7 @@ router.delete("/:id", authenticateUser, async (req, res) => {
         message: "Invalid ID format."
       })
     }
-    const thought = await Thought.findByIdAndDelete({ id, user })
+    const thought = await Thought.findByIdAndDelete({ _id: id, user: userId })
     if (!thought) {
       return res.status(404).json({
         success: false,
@@ -240,7 +240,7 @@ router.delete("/:id", authenticateUser, async (req, res) => {
 router.patch("/:id", authenticateUser, async (req, res) => {
   const { id } = req.params
   const { message } = req.body
-  const user = req.user._id
+  const userId = req.user._id.toString()
 
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -258,7 +258,7 @@ router.patch("/:id", authenticateUser, async (req, res) => {
       })
     }
 
-    const thought = await Thought.findByIdAndUpdate(id, User, { message }, { new: true, runValidators: true })
+    const thought = await Thought.findByIdAndUpdate({ _id: id, user: userId }, { message }, { new: true, runValidators: true })
     if (!thought) {
       return res.status(404).json({
         success: false,
