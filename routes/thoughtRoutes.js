@@ -131,6 +131,49 @@ router.get("/recent", async (req, res) => {
   }
 })
 
+// get all thoughts by a specific user
+router.get("/user/:userId", authenticateUser, async (req, res) => {
+  const { userId } = req.params
+  const page = req.query.page || 1
+  const limit = req.query.limit || 10
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        response: null,
+        message: "Invalid user ID format."
+      })
+    }
+
+    const totalCount = await Thought.find({ user: userId }).countDocuments()
+    const userThoughts = await Thought.find({ user: userId }).sort("-createdAt").skip((page - 1) * limit).limit(limit)
+
+    if (userThoughts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        response: [],
+        message: "No thoughts found for this user."
+      })
+    }
+    res.status(200).json({
+      success: true,
+      response: {
+        data: userThoughts,
+        totalCount: totalCount,
+        currentPage: page,
+        limit: limit,
+      }
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      response: error,
+      message: "Failed to fetch user's thoughts."
+    })
+  }
+})
+
 // post a thought
 router.post("/", authenticateUser, async (req, res) => {
   const { user, message, tags } = req.body
